@@ -27,23 +27,25 @@ def main(input_file,tempPath,choosenTaxon):
     
     cdsDict = {}
     tempList = []
+    # Reads the stdout from Prodigal
     prodigal_out = proc.stdout.readlines()
 
-    # Parse Prodigal's output 
+    # Parse 'Prodigal's output 
     for line in prodigal_out:
         line_decoded = line.decode("utf-8")
 
-        # The first line of the prodigal output contains the sequence ID
+        # The first line of the Prodigal output contains the sequence ID
         if line_decoded.startswith("#") and "seqhdr" in line_decoded:
             seqid = line_decoded.split('"')[1].split()[0]
 
-        # The second line of the prodigal output is not used 
+        # The second line of the Prodigal output is not used 
         elif line_decoded.startswith("#") and "model" in line_decoded:
             continue
         
         # Obtain the start and end positions of the CDSs
         else:
             cdsL = line_decoded.split("_")
+            # Start index correction needed because Prodigal indexes start in 1 instead of 0
             start_position = int(cdsL[1]) - 1
             end_position = int(cdsL[2])
             tempList.append([start_position, end_position])
@@ -51,7 +53,7 @@ def main(input_file,tempPath,choosenTaxon):
     # Add the sequence ID as the key and the list of lists of the CDSs' positions as the value
     cdsDict[seqid] = tempList
     
-    # Write a file with the cdsDict
+    # Add the cdsDict to a file
     filepath = os.path.join(basepath, str(os.path.basename(contigsFasta)) + "_ORF.txt")
     with open(filepath, 'wb') as f:
         var = cdsDict
