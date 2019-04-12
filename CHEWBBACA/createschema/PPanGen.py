@@ -71,6 +71,8 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
 
             currentCDSDict = {}
             currentGenomeDict = {}
+            
+            # Get the path of the runProdigal.main output file for that genome
             filepath = os.path.join(basepath, str(os.path.basename(genomeFile)) + "_ORF.txt")
             newfilepath = os.path.join(basepath, str(newName))
 
@@ -82,14 +84,17 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
             # after the first iteration, genomes are already defined by their cds and no longer have a cds dictionary pickle file
             try:
                 with open(filepath, 'rb') as f:
-                    currentCDSDict = pickle.load(f)
+                    currentCDSDict = pickle.load(f) # key is the contigTag; value is a list of lists containing the start and end positions of the CDSs
+            
+            # This exception will work with the protogenome files
+            #except FileNotFoundError ?
             except:
-                for k, v in currentGenomeDict.items():
-                    currentCDSDict[k] = [[v]]
+                for k, v in currentGenomeDict.items(): 
+                    currentCDSDict[k] = [[v]]   # k is the contigTag; v is a list of lists containing the sequence of the contig
 
-            j = 0
+            #j = 0
 
-            counter = 0
+            #counter = 0
             tsvProtidGenome=""
 
             for contigTag, value in currentCDSDict.items():
@@ -103,12 +108,15 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
                         seq = currentGenomeDict[contigTag][protein[0]:protein[1]].upper()
                         aux=[genomename,contigTag,str(protein[0]),str(protein[1]),str(protid)]
                         tsvProtidGenome+="\n"+'\t'.join(aux)
-
+                    
+                    # except KeyError ?
+                    # This is for the protogenome cases
                     except Exception as e:
 
                         seq = str(protein[0])
 
                     try:
+                        # Translate sequence and obtain the length of the protein
                         protseq, orderedSeq = translateSeq(seq)
                         lengthofProt = len(str(protseq))
                     except:
@@ -116,12 +124,19 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
                         pass
                     # check if any protein with size on dict
 
-                    try:
+                    # Check for small and equal sized proteins
 
-                        if len(str(protseq)) < 67:
+                    try:
+                        
+                        # Check if there are small proteins and count them
+                        # replace len(str(protseq)) by lengthofProt ?
+                        
+                        #if len(str(protseq)) < 67:
+                        if lengthofProt < 67:
                             smallProteins += 1
                             pass
 
+                        # Search for proteins already in the dict
                         elif dictprotsLen[lengthofProt]:
                             proteinFound = False
                             listproteinsid = dictprotsLen[lengthofProt]
@@ -132,12 +147,17 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
                                     proteinsEqual += 1
                                     break
 
+                            # If the protein is not already on the dict, append it. Example: proteins with ID 20 and 30 have length 100.
                             if not proteinFound:
+                                
+                                # Add(append) protein length, protein sequence and CDS sequence to dicts using the protid as key
                                 dictprotsLen[lengthofProt].append(protid)
                                 dictprots[protid] = protseq
                                 newlistOfCDS[protid] = orderedSeq
                                 try:
+                                    # Check if the CDS end position exists. Will trigger exception when it's a protogenome because 'protein' only has the sequence
                                     protein[1]
+                                    # Identify the genome of the protein ID
                                     idstr = ">" + str(genomename) + "|protein" + str(protid)
                                     idstr2 = ">" + str(genomename) + "|protein" + str(protid)
                                 except:
@@ -148,16 +168,22 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
                                 genomeProts += str(orderedSeq) + "\n"
                                 genomeProtsTrans += str(protseq) + "\n"
                                 dictprotsName[protid] = idstr2
+
+                    # except KeyError ?
                     except Exception as e:
                         try:
+                            # Add protein length, protein sequence and CDS sequence to dicts using the protid as key
                             dictprotsLen[lengthofProt] = [protid]
                             dictprots[protid] = protseq
                             newlistOfCDS[protid] = orderedSeq
                             try:
+                                # Check if the CDS end position exists. Will trigger exception when it's a protogenome because 'protein' only has the sequence
                                 protein[1]
+                                # Identify the genome of the protein ID
                                 idstr = ">" + str(genomename) + "|protein" + str(protid)
                                 idstr2 = ">" + str(genomename) + "|protein" + str(protid)
 
+                            # except IndexError ?
                             except:
                                 idstr = ">" + str(contigTag)
                                 idstr2 = ">" + str((contigTag.split(" "))[0])
@@ -167,6 +193,7 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
                             genomeProts += str(orderedSeq) + "\n"
                             genomeProtsTrans += str(protseq) + "\n"
                             dictprotsName[protid] = idstr2
+                        # except KeyError ?
                         except:
                             pass
 
@@ -195,8 +222,10 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
         # check if any protein is substring of a larger, mantaining the larger one
         # ordering the sequences by length, larger ones first
         auxlist = dictprotsLen.keys()
-        auxlist = sorted(auxlist, key=int)
-        auxlist = auxlist[::-1]
+        auxlist = sorted(auxlist, key=int, reverse = True)
+        
+        ## This reverses the list sorting it in descending order
+        #auxlist = auxlist[::-1]
 
         finalProtDict = {}
         genomeProtsTrans = ''
@@ -210,7 +239,7 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
             counter += 1
 
             for protid in dictprotsLen[elem]:
-                str2 = str(dictprots[protid])
+                str2 = str(dictprots[protid]) #protseq
 
                 try:
                     auxprotlist[0]
@@ -228,8 +257,9 @@ def checkGeneStrings(genome1, genome2, newName, basepath, cpu, blastp, createSch
                         genomeProtsTrans += str1 + "\n" + str2 + "\n"
                         finalnumber += 1
                         auxprotlist.append(str2)
+                # except IndexError ?
                 except Exception as e:
-                    str1 = dictprotsName[protid]
+                    str1 = dictprotsName[protid] #idstr2
                     genomeProtsTrans += str1 + "\n" + str2 + "\n"
                     finalnumber += 1
                     auxprotlist.append(str2)
@@ -360,18 +390,19 @@ def main(genomeFiles,cpuToUse,outputFile,bsr,BlastpPath,min_length,verbose,chose
     if cpuToUse > multiprocessing.cpu_count() - 2:
         print("Warning, you are close to use all your cpus, if you are using a laptop you may be uncapable to perform any action")
 
-    taxonList = {'Campylobacter jejuni': 'trained_campyJejuni.trn',
-                 'Acinetobacter baumannii': 'trained_acinetoBaumannii.trn',
-                 'Streptococcus agalactiae': 'trained_strepAgalactiae.trn',
-                 'Haemophilus influenzae': 'trained_haemoInfluenzae_A.trn',
-                 'Yersinia enterocolitica': 'trained_yersiniaEnterocolitica.trn',
-                 'Escherichia coli': 'trained_eColi.trn',
-                 'Enterococcus faecium': 'trained_enteroFaecium.trn',
-                 'Staphylococcus haemolyticus': 'trained_staphHaemolyticus.trn',
-                 'Salmonella enterica': 'trained_salmonellaEnterica_enteritidis.trn',
-                 'Staphylococcus aureus': 'trained_StaphylococcusAureus.trn',
-                 'Streptococcus pneumoniae': 'trained_strepPneumoniae.trn'
-                 }
+    # taxonList = {'Campylobacter jejuni': 'trained_campyJejuni.trn',
+    #              'Acinetobacter baumannii': 'trained_acinetoBaumannii.trn',
+    #              'Streptococcus agalactiae': 'trained_strepAgalactiae.trn',
+    #              'Haemophilus influenzae': 'trained_haemoInfluenzae_A.trn',
+    #              'Yersinia enterocolitica': 'trained_yersiniaEnterocolitica.trn',
+    #              'Escherichia coli': 'trained_eColi.trn',
+    #              'Enterococcus faecium': 'trained_enteroFaecium.trn',
+    #              'Staphylococcus haemolyticus': 'trained_staphHaemolyticus.trn',
+    #              'Salmonella enterica': 'trained_salmonellaEnterica_enteritidis.trn',
+    #              'Staphylococcus aureus': 'trained_StaphylococcusAureus.trn',
+    #              'Streptococcus pneumoniae': 'trained_strepPneumoniae.trn'
+    #              }
+
     #~ if isinstance(chosenTaxon, str):
         #~ trainingFolderPAth = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'TrainingFiles4Prodigal'))
         #~ try:
