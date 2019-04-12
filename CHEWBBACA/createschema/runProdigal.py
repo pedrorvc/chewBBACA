@@ -3,21 +3,10 @@ import sys
 import os
 import subprocess
 import pickle
-#import shutil
 
 def main(input_file,tempPath,choosenTaxon):
 
-
-    # choosenTaxon = "/home/pcerqueira/Lab_Software/testing/Streptococcus_agalactiae.trn"
-    # basepath = "/home/pcerqueira/Lab_Software/testing/temp"
-
     contigsFasta = input_file
-    #genomes = os.listdir("/home/pcerqueira/Lab_Software/testing/fasta_files")
-    # for genome in genomes:
-    #     contigsFasta = "/home/pcerqueira/Lab_Software/testing/fasta_files/" + genome
-
-    #contigsFasta = "/home/pcerqueira/Lab_Software/testing/fasta_files/GCA_000007265.1_ASM726v1_genomic.fna"
-
     basepath = tempPath
 
 
