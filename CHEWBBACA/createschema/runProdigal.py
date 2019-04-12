@@ -3,88 +3,72 @@ import sys
 import os
 import subprocess
 import pickle
-
+#import shutil
 
 def main(input_file,tempPath,choosenTaxon):
 
+
+    # choosenTaxon = "/home/pcerqueira/Lab_Software/testing/Streptococcus_agalactiae.trn"
+    # basepath = "/home/pcerqueira/Lab_Software/testing/temp"
+
     contigsFasta = input_file
+    #genomes = os.listdir("/home/pcerqueira/Lab_Software/testing/fasta_files")
+    # for genome in genomes:
+    #     contigsFasta = "/home/pcerqueira/Lab_Software/testing/fasta_files/" + genome
+
+    #contigsFasta = "/home/pcerqueira/Lab_Software/testing/fasta_files/GCA_000007265.1_ASM726v1_genomic.fna"
 
     basepath = tempPath
+
 
     # ------------ #
     # RUN PRODIGAL #
     # ------------ #
-    # prodigal_path='prodigal'
+
 
     if choosenTaxon == "False":
-
+    
         proc = subprocess.Popen(
             ['prodigal', '-i', contigsFasta, '-c', '-m', '-g', '11', '-p', 'single', '-f', 'sco', '-q'],
             stdout=subprocess.PIPE)
     else:
         proc = subprocess.Popen(
             ['prodigal', '-i', contigsFasta, '-c', '-m', '-g', '11', '-p', 'single', '-f', 'sco', '-q', '-t',
-             choosenTaxon], stdout=subprocess.PIPE)
-
+                choosenTaxon], stdout=subprocess.PIPE)
+    
     cdsDict = {}
     tempList = []
-    line = ' '
-    while line != '':
+    prodigal_out = proc.stdout.readlines()
 
-        # when it finds a contig tag
-        if "seqhdr" in line:
-            # add contig to cdsDict and start new entry
+    # Parse Prodigal's output 
+    for line in prodigal_out:
+        line_decoded = line.decode("utf-8")
 
-            if len(tempList) > 0:
+        # The first line of the prodigal output contains the sequence ID
+        if line_decoded.startswith("#") and "seqhdr" in line_decoded:
+            seqid = line_decoded.split('"')[1].split()[0]
 
-                # --- brute force parsing of the contig tag - better solution is advisable --- #
-
-                i = 0
-                for l in contigTag:
-                    if l == ' ':
-                        break
-                    i += 1
-                contigTag = contigTag[:i]
-
-                cdsDict[contigTag.replace("\r", "")] = tempList
-                tempList = []
-
-            contigTag = line.split('"')[-2]
-
-        # when it finds a line with cds indexes
-        elif line[0] == '>':
-
-            # parsing
-            cdsL = line.split('_')
-
-            # --- each element of this list is a pair of indices - the start and the end of a CDS --- #
-
-            tempList.append([int(cdsL[1]) - 1, int(
-                cdsL[2])])  # start index correction needed because prodigal indexes start in 1 instead of 0
-
-        # reads the stdout from 'prodigal'
-        line = proc.stdout.readline().decode("utf-8")
-
-    # ADD LAST
-    if len(tempList) > 0:
-
-        # --- brute force parsing of the contig tag - better solution is advisable --- #
-
-        i = 0
-        for l in contigTag:
-            if l == ' ':
-                break
-            i += 1
-        contigTag = contigTag[:i]
-
-        cdsDict[contigTag.replace("\r", "")] = tempList
-
+        # The second line of the prodigal output is not used 
+        elif line_decoded.startswith("#") and "model" in line_decoded:
+            continue
+        
+        # Obtain the start and end positions of the CDSs
+        else:
+            cdsL = line_decoded.split("_")
+            start_position = int(cdsL[1]) - 1
+            end_position = int(cdsL[2])
+            tempList.append([start_position, end_position])
+    
+    # Add the sequence ID as the key and the list of lists of the CDSs' positions as the value
+    cdsDict[seqid] = tempList
+    
+    # Write a file with the cdsDict
     filepath = os.path.join(basepath, str(os.path.basename(contigsFasta)) + "_ORF.txt")
     with open(filepath, 'wb') as f:
         var = cdsDict
         pickle.dump(var, f)
-
-    print("done prodigal run on:" + str(os.path.basename(contigsFasta)))
+    
+    print("done prodigal run on: " + str(os.path.basename(contigsFasta)))
 
     return True
 
